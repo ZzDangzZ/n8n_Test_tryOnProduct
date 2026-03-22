@@ -1,0 +1,286 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $('On form submission').item.json['Product URL'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        32
+      ],
+      "id": "dcbf7c1d-1b09-46c7-bbde-bed27353eab5",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $input.first().json.data;\n\n// Extract __NEXT_DATA__ JSON blob\nconst match = html.match(/<script id=\"__NEXT_DATA__\" type=\"application\\/json\">([\\s\\S]*?)<\\/script>/);\nif (!match) throw new Error(\"Could not find __NEXT_DATA__ in page HTML\");\n\nconst pageData = JSON.parse(match[1]);\nconst pageProps = pageData.props.pageProps;\n\n// Get all product variants from productGroups\nconst productGroups = pageProps.productGroups || [];\n\nconst products = productGroups.flatMap(group => {\n  const productsObj = group.products || {};\n  \n  return Object.values(productsObj).map(p => {\n    const info = p.productInfo || {};\n    const prices = p.prices || {};\n    const pdpUrl = p.pdpUrl || {};\n\n    return {\n      title: info.title,\n      subtitle: info.subtitle,\n      fullTitle: info.fullTitle,\n      styleColor: p.styleColor,\n      styleCode: p.styleCode,\n      colorDescription: p.colorDescription,\n      currentPrice: prices.currentPrice,\n      initialPrice: prices.initialPrice,\n      currency: prices.currency,\n      discountPercentage: prices.discountPercentage,\n      onSale: prices.currentPrice < prices.initialPrice,\n      isPromoExclusion: p.isPromoExclusion,\n      isMemberProduct: p.isMemberProduct,\n      isBestSeller: p.featuredAttributes?.includes('BEST_SELLER') ?? false,\n      isJustIn: p.featuredAttributes?.includes('JUST_IN') ?? false,\n      statusModifier: p.statusModifier,\n      productDescription: info.productDescription,\n      imageSquarish: p.contentImages?.[0]?.properties?.squarish?.url,\n      imagePortrait: p.contentImages?.[0]?.properties?.portrait?.url,\n      productUrl: `https://www.nike.com${pdpUrl.path || ''}`,\n      canonicalUrl: pdpUrl.canonicalUrl,\n      globalProductId: p.globalProductId,\n      availabilityDate: p.availabilityDate,\n      countryOfOrigin: p.manufacturingCountriesOfOrigin?.[0],\n      brand: p.brands?.[0],\n      gender: p.genders?.[0],\n      sportTags: p.sportTags,\n      sizes: (p.sizes || []).map(s => ({\n        label: s.label,\n        localizedLabel: s.localizedLabel,\n        localizedLabelPrefix: s.localizedLabelPrefix,\n        status: s.status,\n        gtin: s.gtins?.[0]?.gtin,\n      })),\n      benefits: info.featuresAndBenefits?.find(f => f.header === 'Benefits')?.body || [],\n      productDetails: info.productDetails?.[0]?.body || [],\n    };\n  });\n});\n\nreturn products.map(p => ({ json: p }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        32
+      ],
+      "id": "ac41f27c-6b0c-43e7-8338-f5fcd6687b8f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Generate an image of me wearing the product\"\n        },\n        {\n          \"inline_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"data\": \"{{ $('Extract from File2').item.json['My Image'] }}\"\n          }\n        },\n        {\n          \"inline_data\": {\n            \"mime_type\": \"image/jpeg\",\n            \"data\": \"{{ $json.files[0].data }}\"\n          }\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"responseModalities\": [\n      \"TEXT\",\n      \"IMAGE\"\n    ],\n    \"imageConfig\": {\n      \"aspectRatio\": \"16:9\",\n      \"imageSize\": \"1K\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1568,
+        32
+      ],
+      "id": "f29feabd-ce5f-425e-9ec3-443e8499aa0b",
+      "name": "Generate Image3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ppGXMDHVDzhFdrQw",
+          "name": "Nano Banana"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Test Fashion",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Your Image",
+              "fieldType": "file"
+            },
+            {
+              "fieldLabel": "Product URL",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -224,
+        32
+      ],
+      "id": "632d37bb-ecac-441c-93fb-228a392cea56",
+      "name": "On form submission",
+      "webhookId": "bc00e8ef-a62f-45f1-8efc-21f78fcef44d"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.imageSquarish }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        32
+      ],
+      "id": "85c2407f-0971-4b74-aaf8-833864542ba5",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "binaryPropertyName": "Your_Image",
+        "destinationKey": "My Image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        32
+      ],
+      "id": "7b1922be-191b-48cc-ad52-1da16454a435",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, index) => {\n  const key = Object.keys(item.binary)[0];\n\n  item.binary[key].mimeType = 'image/jpeg'; // or image/png\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        32
+      ],
+      "id": "fe87fb89-53a4-4810-834c-e46a9d321baf",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "candidates[0].content.parts[0].inlineData.data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1792,
+        32
+      ],
+      "id": "b4914f4b-543d-487b-bd91-5d957b402829",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, index) => {\n  const key = Object.keys(item.binary || { data: {} })[0] || 'data';\n\n  return {\n    json: item.json,\n    binary: {\n      [`image_${index}`]: item.binary[key]\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        32
+      ],
+      "id": "b4ffc249-56bb-4346-a4cd-896bc5b25214",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Encodes multiple binary files from an n8n input item into Base64 strings.\n *\n * This code assumes it is running in an n8n \"Code\" or \"Function\" node\n * where 'this' refers to the node's context and 'helpers' are available.\n *\n * @returns {object} An object containing an array of file objects,\n * each with a 'path' and 'data' (Base64 string).\n */\nconst results = [];\n\n// The 'async' keyword is required for the outer function to use 'await'.\n// It is assumed the surrounding function is already declared as 'async'.\nfor (const file in $input.first().binary) {\n  try {\n    // Retrieve the binary object for the current file key.\n    const bin = $input.first().binary[file];\n\n    // Use n8n's helper function to get the file buffer.\n    const binBuffer = await this.helpers.getBinaryDataBuffer(0, file);\n\n    // Construct the file path, handling cases with or without a directory.\n    const path = bin.directory\n      ? `${bin.directory}/${bin.fileName}`\n      : bin.fileName;\n\n    // Push a new object to the results array.\n    results.push({\n      path: path,\n      data: Buffer.from(binBuffer).toString('base64'),\n    });\n  } catch (error) {\n    // Log any errors that occur during processing.\n    console.error(`Error processing file \"${file}\": ${error.message}`);\n    // You could also choose to throw the error or handle it differently here.\n  }\n}\n\n// Return the final object in the expected format for the next node.\nreturn { files: results };\n"
+      },
+      "id": "eb1d3dc5-378e-4862-a34d-6fc4794bc5c3",
+      "name": "Encode to base",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1344,
+        32
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "content": "## Couldn't split into multiple data"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1168,
+        208
+      ],
+      "typeVersion": 1,
+      "id": "6161526d-7fed-4ac2-bab1-2d1248d100e0",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image3": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Encode to base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode to base": {
+      "main": [
+        [
+          {
+            "node": "Generate Image3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "720eae1639f0e1b1ab76ced24fbb4f196dda7d0df252b2276d57a5c8252e98c7"
+  }
+}
